@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI-Powered CEO Briefing System</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0c0c0c;
+  --surface: #161616;
+  --surface2: #1f1f1f;
+  --surface3: #282828;
+  --border: rgba(255,255,255,0.07);
+  --border-strong: rgba(255,255,255,0.13);
+  --text: #efefef;
+  --text2: #9a9a9a;
+  --text3: #555;
+  --gold: #c8a84b;
+  --gold-dim: rgba(200,168,75,0.10);
+  --gold-border: rgba(200,168,75,0.28);
+  --purple: #8b7cf8;
+  --purple-dim: rgba(139,124,248,0.10);
+  --green: #52c49a;
+  --green-dim: rgba(82,196,154,0.10);
+  --blue: #5ba4d4;
+  --blue-dim: rgba(91,164,212,0.10);
+  --red: #e05a5a;
+  --red-dim: rgba(224,90,90,0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Syne', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; line-height: 1.6; }
+
+/* TOP BAR */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 32px; border-bottom: 1px solid var(--border);
+  position: sticky; top: 0; background: rgba(12,12,12,0.96);
+  backdrop-filter: blur(12px); z-index: 100;
+}
+.logo { font-size: 12px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; color: var(--gold); }
+.logo span { color: var(--text3); font-weight: 400; }
+.phase-indicator { display: flex; align-items: center; }
+.pi {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 14px; font-size: 10px; font-weight: 600;
+  letter-spacing: 0.1em; text-transform: uppercase; color: var(--text3);
+  border-right: 1px solid var(--border); cursor: default; transition: color 0.3s;
+}
+.pi:last-child { border-right: none; }
+.pi .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.pi.active { color: var(--gold); }
+.pi.done { color: var(--green); }
+
+/* API BAR */
+.api-bar {
+  display: flex; align-items: center; gap: 12px;
+  padding: 9px 32px; background: var(--surface);
+  border-bottom: 1px solid var(--border); font-size: 12px;
+}
+.api-bar label { color: var(--text2); font-weight: 500; white-space: nowrap; }
+.api-input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border-strong);
+  color: var(--text); padding: 6px 12px; font-family: 'DM Mono', monospace;
+  font-size: 12px; border-radius: 4px; outline: none; transition: border-color 0.2s;
+}
+.api-input:focus { border-color: var(--gold-border); }
+.api-status { font-size: 11px; color: var(--text3); white-space: nowrap; }
+.api-status.ok { color: var(--green); }
+
+/* MAIN */
+.main { max-width: 880px; margin: 0 auto; padding: 40px 32px 80px; }
+
+/* PHASE BLOCK */
+.phase-block { margin-bottom: 40px; opacity: 0.25; pointer-events: none; transition: opacity 0.4s; }
+.phase-block.active { opacity: 1; pointer-events: all; }
+.phase-block.done { opacity: 0.55; pointer-events: none; }
+
+.phase-header {
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 22px; padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.phase-tag {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--text3); background: var(--surface2); padding: 3px 8px; border-radius: 3px;
+}
+.phase-title { font-size: 17px; font-weight: 600; }
+.phase-check { margin-left: auto; color: var(--green); font-size: 12px; display: none; letter-spacing: 0.05em; }
+.phase-block.done .phase-check { display: block; }
+
+/* CARDS */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 8px; padding: 20px 24px; margin-bottom: 12px;
+}
+.card-label {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.13em; text-transform: uppercase;
+  color: var(--text3); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+}
+.badge {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase;
+  padding: 2px 7px; border-radius: 20px;
+}
+.badge-ai    { background: var(--purple-dim); color: var(--purple); border: 1px solid rgba(139,124,248,0.2); }
+.badge-human { background: var(--green-dim);  color: var(--green);  border: 1px solid rgba(82,196,154,0.2); }
+.badge-input { background: var(--blue-dim);   color: var(--blue);   border: 1px solid rgba(91,164,212,0.2); }
+.badge-out   { background: var(--gold-dim);   color: var(--gold);   border: 1px solid var(--gold-border); }
+
+/* FORM */
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.fg { display: flex; flex-direction: column; gap: 5px; }
+.fg.full { grid-column: 1 / -1; }
+.form-label { font-size: 11px; font-weight: 500; color: var(--text2); letter-spacing: 0.03em; }
+.fi, .ft, .fs {
+  background: var(--surface2); border: 1px solid var(--border-strong);
+  color: var(--text); padding: 9px 12px; font-family: 'Syne', sans-serif;
+  font-size: 13px; border-radius: 5px; outline: none; transition: border-color 0.2s; width: 100%;
+}
+.fi:focus, .ft:focus, .fs:focus { border-color: var(--gold-border); }
+.ft { resize: vertical; min-height: 80px; }
+.fs option { background: var(--surface2); }
+
+/* UPLOAD */
+.upload-zone {
+  border: 1px dashed var(--border-strong); border-radius: 6px;
+  padding: 20px; text-align: center; cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+.upload-zone:hover { border-color: var(--gold-border); background: var(--gold-dim); }
+.upload-zone input { display: none; }
+.uz-icon { font-size: 20px; opacity: 0.35; margin-bottom: 6px; }
+.uz-text { font-size: 13px; color: var(--text2); }
+.uz-sub { font-size: 11px; color: var(--text3); margin-top: 3px; }
+.file-list { margin-top: 10px; display: flex; flex-direction: column; gap: 4px; }
+.file-item {
+  display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+  background: var(--surface2); border-radius: 4px;
+  font-size: 12px; font-family: 'DM Mono', monospace; color: var(--text2);
+}
+.file-size { margin-left: auto; color: var(--text3); font-size: 11px; }
+
+/* GATE */
+.gate { display: none; margin: 18px 0; align-items: center; gap: 14px; }
+.gate.show { display: flex; }
+.btn-gate {
+  background: var(--gold); color: #0c0c0c; border: none;
+  padding: 10px 22px; font-family: 'Syne', sans-serif; font-size: 13px;
+  font-weight: 700; letter-spacing: 0.03em; border-radius: 5px; cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s; display: flex; align-items: center; gap: 8px;
+  white-space: nowrap;
+}
+.btn-gate:hover { opacity: 0.85; }
+.btn-gate:active { transform: scale(0.98); }
+.btn-gate:disabled { opacity: 0.35; cursor: not-allowed; }
+.gate-hint { font-size: 11px; color: var(--text3); }
+
+/* LOADING */
+.loading { display: none; align-items: center; gap: 10px; padding: 12px 0; font-size: 12px; color: var(--text3); }
+.loading.show { display: flex; }
+.spinner {
+  width: 14px; height: 14px; border: 1.5px solid var(--border-strong);
+  border-top-color: var(--gold); border-radius: 50%;
+  animation: spin 0.8s linear infinite; flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* AI OUTPUT */
+.ai-out {
+  display: none; background: var(--surface); border: 1px solid var(--border);
+  border-left: 2px solid var(--purple); border-radius: 6px;
+  padding: 20px 24px; margin-bottom: 12px;
+}
+.ai-out.show { display: block; }
+.ai-out pre {
+  font-family: 'DM Mono', monospace; font-size: 12px; line-height: 1.85;
+  color: var(--text2); white-space: pre-wrap; word-break: break-word;
+}
+
+/* BRIEFING OUTPUT */
+.briefing-out {
+  display: none; background: var(--surface); border: 1px solid var(--border);
+  border-left: 2px solid var(--gold); border-radius: 6px;
+  padding: 28px 32px; margin-bottom: 12px;
+}
+.briefing-out.show { display: block; }
+.briefing-out .b-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;
+}
+.briefing-body { font-family: 'DM Mono', monospace; font-size: 13px; line-height: 1.9; }
+.briefing-body .b-section {
+  font-family: 'Syne', sans-serif; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.15em; text-transform: uppercase; color: var(--gold);
+  margin: 24px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--gold-border);
+}
+.briefing-body .b-section:first-child { margin-top: 0; }
+.briefing-body .b-line { color: var(--text2); margin: 3px 0; }
+.briefing-body .b-key { color: var(--text); font-weight: 500; }
+.briefing-body .b-assumption {
+  margin: 4px 0; padding: 5px 10px;
+  background: var(--gold-dim); border-left: 2px solid var(--gold);
+  font-size: 11px; color: var(--gold);
+}
+.briefing-body .b-divider { border: none; border-top: 1px solid var(--border); margin: 10px 0; opacity: 0.4; }
+
+/* COPY BTN */
+.btn-copy {
+  background: var(--surface2); border: 1px solid var(--border-strong); color: var(--text2);
+  padding: 5px 14px; font-family: 'Syne', sans-serif; font-size: 11px; font-weight: 600;
+  border-radius: 4px; cursor: pointer; transition: all 0.2s; letter-spacing: 0.04em;
+}
+.btn-copy:hover { border-color: var(--gold-border); color: var(--gold); }
+
+/* ERROR */
+.err-msg {
+  display: none; background: var(--red-dim); border: 1px solid rgba(224,90,90,0.2);
+  border-radius: 5px; padding: 10px 14px; font-size: 12px; color: var(--red); margin-bottom: 12px;
+}
+.err-msg.show { display: block; }
+
+/* FRAMEWORK */
+.fw-opt {
+  display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 5px; cursor: pointer; transition: border-color 0.2s; margin-bottom: 8px;
+}
+.fw-opt:hover { border-color: var(--gold-border); }
+.fw-opt.selected { border-color: var(--gold); background: var(--gold-dim); }
+.fw-opt input { margin-top: 2px; accent-color: var(--gold); }
+.fw-name { font-weight: 600; font-size: 13px; }
+.fw-desc { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+/* DONE BANNER */
+.done-banner {
+  display: none; align-items: center; gap: 10px; padding: 12px 16px;
+  background: var(--green-dim); border: 1px solid rgba(82,196,154,0.2);
+  border-radius: 5px; font-size: 13px; color: var(--green); margin-top: 16px;
+}
+.done-banner.show { display: flex; }
+
+@media (max-width: 640px) {
+  .form-grid { grid-template-columns: 1fr; }
+  .main { padding: 24px 16px 60px; }
+  .topbar, .api-bar { padding: 12px 16px; }
+  .phase-indicator { display: none; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">Briefing <span>/</span> AI System</div>
+  <div class="phase-indicator">
+    <div class="pi active" id="pi1"><span class="dot"></span>Input</div>
+    <div class="pi" id="pi2"><span class="dot"></span>Review</div>
+    <div class="pi" id="pi3"><span class="dot"></span>Strategy</div>
+    <div class="pi" id="pi4"><span class="dot"></span>Output</div>
+  </div>
+</div>
+
+<!-- API KEY BAR -->
+<div class="api-bar">
+  <label>Anthropic API Key</label>
+  <input type="password" class="api-input" id="apiKey" placeholder="sk-ant-..." oninput="checkKey()">
+  <span class="api-status" id="apiStatus">Enter your key to begin</span>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ════════════════ PHASE 1 ════════════════ -->
+<div class="phase-block active" id="phase1">
+  <div class="phase-header">
+    <span class="phase-tag">Phase 1</span>
+    <span class="phase-title">Input & context gathering</span>
+    <span class="phase-check">✓ Complete</span>
+  </div>
+
+  <!-- EVENT FORM -->
+  <div class="card">
+    <div class="card-label"><span class="badge badge-input">Input</span>Event details</div>
+    <div class="form-grid">
+      <div class="fg">
+        <label class="form-label">Event type</label>
+        <select class="fs" id="evType">
+          <option value="">Select...</option>
+          <option>Bilateral meeting</option>
+          <option>Multilateral meeting</option>
+          <option>Conference / summit</option>
+          <option>Negotiation</option>
+          <option>Partnership discussion</option>
+          <option>Regulatory / government meeting</option>
+          <option>Internal alignment</option>
+          <option>Social / networking event</option>
+          <option>Other</option>
+        </select>
+      </div>
+      <div class="fg">
+        <label class="form-label">Date & location</label>
+        <input class="fi" id="evDate" placeholder="e.g. 15 May 2025, Istanbul">
+      </div>
+      <div class="fg full">
+        <label class="form-label">Participants (names, companies, roles)</label>
+        <textarea class="ft" id="evParticipants" style="min-height:65px" placeholder="e.g. Ahmet Yilmaz, CEO XYZ Airlines; our CEO; our CFO..."></textarea>
+      </div>
+      <div class="fg">
+        <label class="form-label">Purpose / agenda</label>
+        <textarea class="ft" id="evPurpose" placeholder="What is this meeting about?"></textarea>
+      </div>
+      <div class="fg">
+        <label class="form-label">Format</label>
+        <input class="fi" id="evFormat" placeholder="e.g. Formal meeting, dinner, site visit">
+      </div>
+      <div class="fg">
+        <label class="form-label">Language</label>
+        <input class="fi" id="evLang" placeholder="e.g. English, German, Turkish">
+      </div>
+      <div class="fg">
+        <label class="form-label">Dress code</label>
+        <input class="fi" id="evDress" placeholder="e.g. Business formal">
+      </div>
+      <div class="fg">
+        <label class="form-label">Courtesy gift</label>
+        <input class="fi" id="evGift" placeholder="e.g. Company merchandise, none">
+      </div>
+      <div class="fg full">
+        <label class="form-label">Other info — sensitivities, relationship history, internal politics, anything relevant</label>
+        <textarea class="ft" id="evOther" style="min-height:90px" placeholder="Add anything that doesn't fit the structured fields above..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOCUMENT UPLOAD -->
+  <div class="card">
+    <div class="card-label"><span class="badge badge-input">Upload</span>Reference documents</div>
+    <div class="upload-zone" onclick="document.getElementById('docUp').click()">
+      <input type="file" id="docUp" multiple accept=".pdf,.txt,.md,.csv" onchange="handleUpload(event,'docs','fileList1')">
+      <div class="uz-icon">↑</div>
+      <div class="uz-text">Upload past briefings, emails, decision papers</div>
+      <div class="uz-sub">PDF, TXT, MD, CSV — multiple files supported</div>
+    </div>
+    <div class="file-list" id="fileList1"></div>
+  </div>
+
+  <!-- GATE 1 -->
+  <div class="gate show" id="gate1">
+    <button class="btn-gate" onclick="startResearch()" id="btnResearch">&#8594; Start research</button>
+    <span class="gate-hint">Confirms inputs and triggers AI research</span>
+  </div>
+
+  <div class="loading" id="ldResearch"><div class="spinner"></div><span id="ldResearchTxt">Running web search and analyzing documents...</span></div>
+  <div class="err-msg" id="errResearch"></div>
+
+  <div class="ai-out" id="outResearch">
+    <div class="card-label"><span class="badge badge-ai">AI</span>Research findings</div>
+    <pre id="txtResearch"></pre>
+  </div>
+
+  <div class="ai-out" id="outClarify">
+    <div class="card-label"><span class="badge badge-ai">AI</span>Clarifying questions</div>
+    <pre id="txtClarify"></pre>
+  </div>
+
+  <!-- ANSWERS -->
+  <div class="card" id="answersCard" style="display:none">
+    <div class="card-label"><span class="badge badge-input">Input</span>Your answers to the clarifying questions</div>
+    <textarea class="ft" id="answers" style="min-height:130px" placeholder="Answer each question above..."></textarea>
+    <div style="margin-top:10px">
+      <div class="upload-zone" onclick="document.getElementById('addUp').click()" style="padding:12px">
+        <input type="file" id="addUp" multiple accept=".pdf,.txt,.md,.csv" onchange="handleUpload(event,'additional','fileList2')">
+        <div class="uz-text" style="font-size:12px">+ Upload additional documents if needed</div>
+      </div>
+      <div class="file-list" id="fileList2"></div>
+    </div>
+  </div>
+
+  <!-- GATE 2 -->
+  <div class="gate" id="gate2">
+    <button class="btn-gate" onclick="genDraft()" id="btnDraft">&#8594; Generate first draft</button>
+    <span class="gate-hint">Triggers structured briefing generation</span>
+  </div>
+  <div class="loading" id="ldDraft"><div class="spinner"></div><span>Generating first draft briefing...</span></div>
+  <div class="err-msg" id="errDraft"></div>
+</div>
+
+<!-- ════════════════ PHASE 2 ════════════════ -->
+<div class="phase-block" id="phase2">
+  <div class="phase-header">
+    <span class="phase-tag">Phase 2</span>
+    <span class="phase-title">Operator review & feedback</span>
+    <span class="phase-check">✓ Complete</span>
+  </div>
+
+  <div class="briefing-out" id="outDraft">
+    <div class="b-header">
+      <span class="badge badge-out">Draft v1</span>
+      <button class="btn-copy" onclick="copyText('draftBody')">Copy</button>
+    </div>
+    <div class="briefing-body" id="draftBody"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="badge badge-human">Human</span>Review flagged assumptions + provide feedback</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Review the draft above. Correct any assumptions, add missing context, and note what should change.</p>
+    <textarea class="ft" id="feedback" style="min-height:130px" placeholder="e.g. The JV context is wrong — we are only in early discussions. Add that the CEO has met Ahmet twice before. Remove the section on..."></textarea>
+    <div style="margin-top:10px">
+      <div class="upload-zone" onclick="document.getElementById('fbUp').click()" style="padding:12px">
+        <input type="file" id="fbUp" multiple accept=".pdf,.txt,.md,.csv" onchange="handleUpload(event,'feedback','fileList3')">
+        <div class="uz-text" style="font-size:12px">+ Upload feedback document if preferred</div>
+      </div>
+      <div class="file-list" id="fileList3"></div>
+    </div>
+  </div>
+
+  <div class="gate" id="gate3">
+    <button class="btn-gate" onclick="proceedStrategy()" id="btnStrategy">&#8594; Proceed to strategic analysis</button>
+    <span class="gate-hint">Confirms feedback and triggers Phase 3</span>
+  </div>
+  <div class="loading" id="ldStrategy"><div class="spinner"></div><span id="ldStrategyTxt">Running quality review...</span></div>
+  <div class="err-msg" id="errStrategy"></div>
+</div>
+
+<!-- ════════════════ PHASE 3 ════════════════ -->
+<div class="phase-block" id="phase3">
+  <div class="phase-header">
+    <span class="phase-tag">Phase 3</span>
+    <span class="phase-title">Strategic intelligence layer</span>
+    <span class="phase-check">✓ Complete</span>
+  </div>
+
+  <div class="ai-out" id="outQuality">
+    <div class="card-label"><span class="badge badge-ai">AI</span>3a — Quality review notes</div>
+    <pre id="txtQuality"></pre>
+  </div>
+
+  <div class="card" id="fwCard" style="display:none">
+    <div class="card-label"><span class="badge badge-ai">AI</span>3b — Framework recommendation</div>
+    <div id="fwRationale" style="font-size:13px;color:var(--text2);margin-bottom:14px;line-height:1.7;font-family:'DM Mono',monospace"></div>
+    <div class="card-label" style="margin-top:16px"><span class="badge badge-human">Human</span>Approve or override</div>
+    <div id="fwOptions"></div>
+    <div class="fg" style="margin-top:10px">
+      <label class="form-label">Custom override (optional — leave blank to use selection above)</label>
+      <input class="fi" id="fwOverride" placeholder="e.g. SWOT + Stakeholder mapping">
+    </div>
+  </div>
+
+  <div class="gate" id="gate4">
+    <button class="btn-gate" onclick="runAnalysis()" id="btnAnalysis">&#8594; Approve framework & run analysis</button>
+    <span class="gate-hint">Locks in framework and triggers strategic analysis</span>
+  </div>
+  <div class="loading" id="ldAnalysis"><div class="spinner"></div><span>Running strategic analysis...</span></div>
+  <div class="err-msg" id="errAnalysis"></div>
+
+  <div class="ai-out" id="outAnalysis">
+    <div class="card-label"><span class="badge badge-ai">AI</span>3c — Strategic analysis</div>
+    <pre id="txtAnalysis"></pre>
+  </div>
+</div>
+
+<!-- ════════════════ PHASE 4 ════════════════ -->
+<div class="phase-block" id="phase4">
+  <div class="phase-header">
+    <span class="phase-tag">Phase 4</span>
+    <span class="phase-title">Final output</span>
+  </div>
+
+  <div class="card">
+    <div class="card-label"><span class="badge badge-human">Human</span>Final review</div>
+    <p style="font-size:12px;color:var(--text3);margin-bottom:12px">Review the strategic analysis above. Add any last-minute corrections or additions before generating the CEO-ready briefing.</p>
+    <textarea class="ft" id="finalNotes" style="min-height:80px" placeholder="Any last corrections, additions, or nuances..."></textarea>
+  </div>
+
+  <div class="gate" id="gate5">
+    <button class="btn-gate" onclick="genFinal()" id="btnFinal">&#8594; Generate final briefing</button>
+    <span class="gate-hint">Explicit final approval — generates the CEO-ready document</span>
+  </div>
+  <div class="loading" id="ldFinal"><div class="spinner"></div><span>Generating CEO-ready briefing...</span></div>
+  <div class="err-msg" id="errFinal"></div>
+
+  <div class="briefing-out" id="outFinal">
+    <div class="b-header">
+      <span class="badge badge-out">CEO Briefing — Final</span>
+      <button class="btn-copy" onclick="copyText('finalBody')">Copy</button>
+    </div>
+    <div class="briefing-body" id="finalBody"></div>
+  </div>
+
+  <div class="done-banner" id="doneBanner">
+    <span>✓</span> Briefing complete. Copy the output above or refresh to start a new briefing.
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ── STATE ──
+const S = {
+  docs: [], additional: [], feedback: [],
+  eventSummary: '', research: '', clarifying: '',
+  draft: '', quality: '', framework: '', analysis: ''
+};
+
+// ── API KEY ──
+function checkKey() {
+  const k = document.getElementById('apiKey').value.trim();
+  const s = document.getElementById('apiStatus');
+  if (k.startsWith('sk-ant-') && k.length > 20) {
+    s.textContent = '✓ Key set'; s.className = 'api-status ok';
+  } else {
+    s.textContent = 'Enter your key to begin'; s.className = 'api-status';
+  }
+}
+function getKey() { return document.getElementById('apiKey').value.trim(); }
+
+// ── FILE UPLOAD ──
+function fmtSize(b) {
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+  return (b/1048576).toFixed(1) + ' MB';
+}
+async function handleUpload(ev, stateKey, listId) {
+  for (const file of Array.from(ev.target.files)) {
+    const isPdf = file.name.toLowerCase().endsWith('.pdf');
+    let content;
+    if (isPdf) {
+      content = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result.split(',')[1]);
+        r.onerror = rej;
+        r.readAsDataURL(file);
+      });
+    } else {
+      content = await new Promise((res, rej) => {
+        const r = new FileReader();
+        r.onload = () => res(r.result);
+        r.onerror = rej;
+        r.readAsText(file);
+      });
+    }
+    S[stateKey].push({ name: file.name, size: file.size, content, isPdf });
+    const list = document.getElementById(listId);
+    list.innerHTML += `<div class="file-item"><span style="color:var(--text3)">&#128196;</span><span style="flex:1">${file.name}</span><span class="file-size">${fmtSize(file.size)}</span></div>`;
+  }
+}
+
+// ── DOC BLOCKS FOR API ──
+function buildDocBlocks(docs) {
+  return docs.map(d => d.isPdf
+    ? { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: d.content } }
+    : { type: 'text', text: `\n[DOCUMENT: ${d.name}]\n${d.content}\n[/DOCUMENT]` }
+  );
+}
+
+// ── CALL CLAUDE ──
+async function callClaude(messages, webSearch = false) {
+  const key = getKey();
+  if (!key || !key.startsWith('sk-ant-')) throw new Error('Please enter a valid Anthropic API key.');
+  const body = { model: 'claude-sonnet-4-20250514', max_tokens: 2000, messages };
+  if (webSearch) body.tools = [{ type: 'web_search_20250305', name: 'web_search' }];
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e.error?.message || `API error ${res.status}`);
+  }
+  const data = await res.json();
+  return data.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+}
+
+// ── UI HELPERS ──
+const $ = id => document.getElementById(id);
+function show(id)   { const el=$(id); if(el){ el.classList.add('show'); el.style.display=''; } }
+function hide(id)   { const el=$(id); if(el){ el.classList.remove('show'); } }
+function showEl(id) { const el=$(id); if(el) el.style.display=''; }
+function hideEl(id) { const el=$(id); if(el) el.style.display='none'; }
+function setTxt(id,t){ const el=$(id); if(el) el.textContent=t; }
+function showErr(id, msg) { const el=$(id); if(el){ el.textContent='⚠ '+msg; el.classList.add('show'); } }
+function clearErr(id) { const el=$(id); if(el) el.classList.remove('show'); }
+
+function activatePhase(n) {
+  $('phase'+n).classList.add('active');
+  for (let i=1;i<=4;i++) {
+    const pi=$('pi'+i);
+    if (i<n) { pi.className='pi done'; }
+    else if (i===n) { pi.className='pi active'; }
+    else { pi.className='pi'; }
+  }
+  if (n>1) $('phase'+(n-1)).classList.add('done');
+}
+
+function fmtBriefing(text) {
+  const lines = text.split('\n');
+  let html = '';
+  for (const line of lines) {
+    const t = line.trim();
+    if (!t) { html += '<div style="height:4px"></div>'; continue; }
+    if (t.startsWith('═') || t.startsWith('─')) {
+      html += '<hr class="b-divider">';
+    } else if (/^[A-D]\)\s/.test(t)) {
+      html += `<div class="b-section">${t}</div>`;
+    } else if (t.match(/^\[ASSUMPTION:/i)) {
+      html += `<div class="b-assumption">${t}</div>`;
+    } else if (t.match(/^(COMMUNICATE|FIND OUT|FLAG|GET COMMITMENT ON|REQUEST):/i)) {
+      const idx = t.indexOf(':');
+      html += `<div class="b-line"><span class="b-key">${t.slice(0,idx)}: </span>${t.slice(idx+1)}</div>`;
+    } else if (t.startsWith('•') || t.startsWith('-')) {
+      html += `<div class="b-line" style="padding-left:14px">${t}</div>`;
+    } else if (t.match(/^CEO BRIEFING/i)) {
+      html += `<div style="font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--text);margin-bottom:4px">${t}</div>`;
+    } else {
+      html += `<div class="b-line">${t}</div>`;
+    }
+  }
+  return html;
+}
+
+function copyText(id) {
+  const el=$(id); if(!el) return;
+  navigator.clipboard.writeText(el.innerText).then(() => {
+    const btn = el.closest('.briefing-out')?.querySelector('.btn-copy');
+    if (btn) { btn.textContent='Copied!'; setTimeout(()=>btn.textContent='Copy',2000); }
+  });
+}
+
+// ── PHASE 1: START RESEARCH ──
+async function startResearch() {
+  const key = getKey();
+  if (!key || !key.startsWith('sk-ant-')) { alert('Please enter your Anthropic API key first.'); return; }
+
+  const ev = {
+    type: $('evType').value, date: $('evDate').value,
+    participants: $('evParticipants').value, purpose: $('evPurpose').value,
+    format: $('evFormat').value, lang: $('evLang').value,
+    dress: $('evDress').value, gift: $('evGift').value, other: $('evOther').value
+  };
+  if (!ev.participants.trim() || !ev.purpose.trim()) {
+    alert('Please fill in at least Participants and Purpose before starting.'); return;
+  }
+
+  S.eventSummary = `EVENT TYPE: ${ev.type}
+DATE & LOCATION: ${ev.date}
+PARTICIPANTS: ${ev.participants}
+PURPOSE: ${ev.purpose}
+FORMAT: ${ev.format}
+LANGUAGE: ${ev.lang}
+DRESS CODE: ${ev.dress}
+COURTESY GIFT: ${ev.gift}
+OTHER INFO: ${ev.other}`.trim();
+
+  $('btnResearch').disabled = true;
+  hide('gate1');
+  clearErr('errResearch');
+  show('ldResearch');
+
+  const docBlocks = buildDocBlocks(S.docs);
+  const userMsg = [
+    ...docBlocks,
+    { type:'text', text:`You are preparing intelligence for a CEO briefing. Research the following event and participants.
+
+EVENT DETAILS:
+${S.eventSummary}
+
+TASKS:
+1. Use web search to research external participants: their companies, background, recent news, financial context, industry position.
+2. If documents are provided above, extract all relevant context from them.
+3. Flag any gaps where you found nothing useful — do not skip silently.
+4. Output structured research findings with clear sections. Be factual and concise.` }
+  ];
+
+  try {
+    setTxt('ldResearchTxt','Running web search and analyzing documents...');
+    S.research = await callClaude([{role:'user',content:userMsg}], true);
+    setTxt('txtResearch', S.research);
+    show('outResearch');
+
+    setTxt('ldResearchTxt','Generating clarifying questions...');
+    S.clarifying = await callClaude([
+      {role:'user',content:userMsg},
+      {role:'assistant',content:S.research},
+      {role:'user',content:`Based on your research and the event details, identify gaps and ambiguities that must be clarified before drafting the CEO briefing.
+
+Generate 4–7 precise clarifying questions. Focus on:
+- Internal relationship history and prior interactions
+- Strategic objectives not yet explicit
+- Information not found in research that must come from the operator
+- Assumptions you had to make
+
+Format as a numbered list. Be specific — no generic filler questions.`}
+    ], false);
+    setTxt('txtClarify', S.clarifying);
+    show('outClarify');
+    hide('ldResearch');
+    showEl('answersCard');
+    show('gate2');
+  } catch(err) {
+    hide('ldResearch');
+    showErr('errResearch', err.message);
+    $('btnResearch').disabled = false;
+    show('gate1');
+  }
+}
+
+// ── PHASE 1: GENERATE FIRST DRAFT ──
+async function genDraft() {
+  $('btnDraft').disabled = true;
+  hide('gate2');
+  clearErr('errDraft');
+  show('ldDraft');
+
+  const addBlocks = buildDocBlocks(S.additional);
+  const allDocs = [...buildDocBlocks(S.docs), ...addBlocks];
+
+  const userMsg = [
+    ...allDocs,
+    {type:'text',text:`Generate a structured CEO briefing based on all context gathered.
+
+EVENT DETAILS:
+${S.eventSummary}
+
+RESEARCH FINDINGS:
+${S.research}
+
+CLARIFYING QUESTIONS:
+${S.clarifying}
+
+OPERATOR ANSWERS:
+${$('answers').value || '(No answers provided)'}
+
+Generate the briefing in EXACTLY this structure. Be crisp, high-level, and executive-ready in sections A–C. Flag remaining assumptions with [ASSUMPTION: ...].
+
+═══════════════════════════════════════
+CEO BRIEFING — DRAFT v1
+═══════════════════════════════════════
+
+A) BACKGROUND
+Why this event takes place and the historical context. Maximum 5 bullet points. High level only.
+
+B) KEY MESSAGES
+What the CEO must accomplish at this meeting:
+• COMMUNICATE: Key points to convey
+• FIND OUT: Information to extract from the counterpart
+• FLAG: Issues to raise
+• GET COMMITMENT ON: Agreements to secure
+• REQUEST: Specific asks
+
+C) SITUATION & ATMOSPHERE
+Cultural context, interpersonal dynamics, tone to adopt, specific topics to avoid. Practical guidance only.
+
+D) ANNEX — FULL DETAIL
+All granular information: participant profiles, company background, recent news, financial data, research sources, detailed context. Everything belongs here. Sections A–C above are the crisp executive layer.
+═══════════════════════════════════════`}
+  ];
+
+  try {
+    S.draft = await callClaude([{role:'user',content:userMsg}], false);
+    $('draftBody').innerHTML = fmtBriefing(S.draft);
+    show('outDraft');
+    hide('ldDraft');
+    activatePhase(2);
+    show('gate3');
+    setTimeout(() => $('phase2').scrollIntoView({behavior:'smooth'}), 300);
+  } catch(err) {
+    hide('ldDraft');
+    showErr('errDraft', err.message);
+    $('btnDraft').disabled = false;
+    show('gate2');
+  }
+}
+
+// ── PHASE 2: PROCEED TO STRATEGY ──
+async function proceedStrategy() {
+  $('btnStrategy').disabled = true;
+  hide('gate3');
+  clearErr('errStrategy');
+  show('ldStrategy');
+
+  const fbDocs = S.feedback.map(d => `\n[DOC: ${d.name}]\n${d.content}`).join('\n');
+  const operatorFeedback = $('feedback').value + (fbDocs ? '\n\nFEEDBACK DOCUMENTS:\n'+fbDocs : '');
+
+  try {
+    setTxt('ldStrategyTxt','Running quality review...');
+    S.quality = await callClaude([{role:'user',content:`Review this CEO briefing draft for quality.
+
+DRAFT:
+${S.draft}
+
+OPERATOR FEEDBACK:
+${operatorFeedback}
+
+Check for:
+- Vague or fluffy language (flag for cuts)
+- Contradictions or inconsistencies
+- Unverified data points or weak sourcing
+- Assumptions not yet flagged
+
+Output a concise quality review: what to fix, what to confirm, what is solid. Be direct and numbered.`}], false);
+    setTxt('txtQuality', S.quality);
+    show('outQuality');
+
+    setTxt('ldStrategyTxt','Selecting strategic frameworks...');
+    S.framework = await callClaude([{role:'user',content:`Recommend the most appropriate strategic framework(s) for this CEO briefing.
+
+EVENT CONTEXT:
+${S.eventSummary}
+
+BRIEFING EXTRACT:
+${S.draft.substring(0,800)}
+
+Choose from: Porter's Five Forces, SWOT, PESTEL, McKinsey 7S, OKRs, Business Model Canvas, Light SWOT, Stakeholder Mapping, Value Chain Analysis, BCG Matrix.
+
+Respond in exactly this format:
+PRIMARY FRAMEWORK: [name]
+SECONDARY FRAMEWORK: [name or none]
+RATIONALE: [2–3 sentences]
+HOW TO APPLY: [specific guidance for this briefing]`}], false);
+
+    $('fwRationale').innerHTML = S.framework.replace(/\n/g,'<br>');
+
+    // Parse framework names
+    const pm = S.framework.match(/PRIMARY FRAMEWORK:\s*(.+)/i);
+    const sm = S.framework.match(/SECONDARY FRAMEWORK:\s*(.+)/i);
+    const opts = [];
+    if (pm) opts.push({name: pm[1].trim(), desc:'Primary (AI recommended)'});
+    if (sm && !sm[1].toLowerCase().includes('none')) opts.push({name:sm[1].trim(), desc:'Secondary (AI recommended)'});
+    if (opts.length>1) opts.push({name:`${opts[0].name} + ${opts[1].name}`, desc:'Both frameworks combined'});
+
+    $('fwOptions').innerHTML = opts.map((o,i)=>`
+      <label class="fw-opt ${i===0?'selected':''}" onclick="document.querySelectorAll('.fw-opt').forEach(x=>x.classList.remove('selected'));this.classList.add('selected')">
+        <input type="radio" name="fw" value="${o.name}" ${i===0?'checked':''} style="display:none">
+        <div><div class="fw-name">${o.name}</div><div class="fw-desc">${o.desc}</div></div>
+      </label>`).join('');
+
+    showEl('fwCard');
+    show('gate4');
+    hide('ldStrategy');
+    activatePhase(3);
+    setTimeout(()=>$('phase3').scrollIntoView({behavior:'smooth'}),300);
+  } catch(err) {
+    hide('ldStrategy');
+    showErr('errStrategy', err.message);
+    $('btnStrategy').disabled = false;
+    show('gate3');
+  }
+}
+
+// ── PHASE 3: STRATEGIC ANALYSIS ──
+async function runAnalysis() {
+  const override = $('fwOverride').value.trim();
+  const selected = document.querySelector('input[name="fw"]:checked');
+  const fw = override || (selected ? selected.value : 'SWOT');
+
+  $('btnAnalysis').disabled = true;
+  hide('gate4');
+  clearErr('errAnalysis');
+  show('ldAnalysis');
+
+  try {
+    S.analysis = await callClaude([{role:'user',content:`Apply the ${fw} framework to produce the strategic analysis for this CEO briefing.
+
+EVENT CONTEXT:
+${S.eventSummary}
+
+BRIEFING DRAFT:
+${S.draft}
+
+QUALITY REVIEW NOTES:
+${S.quality}
+
+OPERATOR FEEDBACK:
+${$('feedback').value}
+
+Apply ${fw} rigorously. Extract the 3–5 most important strategic insights for the CEO. Produce actionable recommendations. Format with clear headers. Be precise and executive-grade — no filler.`}], false);
+
+    setTxt('txtAnalysis', S.analysis);
+    show('outAnalysis');
+    hide('ldAnalysis');
+    activatePhase(4);
+    show('gate5');
+    setTimeout(()=>$('phase4').scrollIntoView({behavior:'smooth'}),300);
+  } catch(err) {
+    hide('ldAnalysis');
+    showErr('errAnalysis', err.message);
+    $('btnAnalysis').disabled = false;
+    show('gate4');
+  }
+}
+
+// ── PHASE 4: FINAL BRIEFING ──
+async function genFinal() {
+  const sel = document.querySelector('input[name="fw"]:checked');
+  const fw = $('fwOverride').value.trim() || (sel ? sel.value : 'SWOT');
+
+  $('btnFinal').disabled = true;
+  hide('gate5');
+  clearErr('errFinal');
+  show('ldFinal');
+
+  const today = new Date().toLocaleDateString('en-GB',{day:'numeric',month:'long',year:'numeric'});
+
+  try {
+    const final = await callClaude([{role:'user',content:`Generate the final, polished CEO briefing. This is the clean, definitive version incorporating all research, feedback, and strategic analysis.
+
+EVENT DETAILS:
+${S.eventSummary}
+
+FIRST DRAFT:
+${S.draft}
+
+OPERATOR FEEDBACK:
+${$('feedback').value}
+
+STRATEGIC ANALYSIS (${fw}):
+${S.analysis}
+
+FINAL OPERATOR NOTES:
+${$('finalNotes').value || '(none)'}
+
+Produce the final briefing in EXACTLY this structure:
+
+═══════════════════════════════════════════
+CEO BRIEFING — FINAL
+${today}
+═══════════════════════════════════════════
+
+A) BACKGROUND
+Crisp, high-level context only. Max 5 bullet points.
+
+B) KEY MESSAGES
+• COMMUNICATE:
+• FIND OUT:
+• FLAG:
+• GET COMMITMENT ON:
+• REQUEST:
+
+C) SITUATION & ATMOSPHERE
+Tone to adopt, key dynamics, specific topics to avoid.
+
+D) ANNEX — FULL DETAIL
+All granular information: participant profiles, company background, recent news, financial context, full strategic analysis output, research sources. Everything belongs here.
+═══════════════════════════════════════════`}], false);
+
+    $('finalBody').innerHTML = fmtBriefing(final);
+    show('outFinal');
+    hide('ldFinal');
+    show('doneBanner');
+    $('phase4').classList.add('done');
+    setTimeout(()=>$('outFinal').scrollIntoView({behavior:'smooth'}),300);
+  } catch(err) {
+    hide('ldFinal');
+    showErr('errFinal', err.message);
+    $('btnFinal').disabled = false;
+    show('gate5');
+  }
+}
+</script>
+</body>
+</html>
